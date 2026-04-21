@@ -1,0 +1,19 @@
+services:
+  nats-console:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: nats-console/allinone:latest
+    restart: unless-stopped
+    ports:
+      - "3000"
+      - "3001"
+    environment:
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-15m}
+      JWT_REFRESH_EXPIRES_IN: ${JWT_REFRESH_EXPIRES_IN:-7d}
+    volumes:
+      - nats_console_data:/data
+
+volumes:
+  nats_console_data:

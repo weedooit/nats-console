@@ -1,66 +1,81 @@
 # =============================================================================
-# NATS Console Web - Multi-Stage Docker Build
+# NATS Console API - Multi-Stage Docker Build
 # Compatible with docker-compose.prod.dokploy.yml
 # =============================================================================
 
 # =============================================================================
-# Stage 1: Builder - Install all dependencies and build
+# Stage 1: Builder
 # =============================================================================
 FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-# Install pnpm
 RUN corepack enable && corepack prepare pnpm@latest --activate
 
-# Public variables used by Next.js at BUILD time
-ARG NEXT_PUBLIC_API_URL=/api/v1
-ARG NEXT_PUBLIC_WS_URL=/ws
-
-ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
-ENV NEXT_PUBLIC_WS_URL=$NEXT_PUBLIC_WS_URL
-
-# Copy package files for dependency caching
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json ./
-COPY apps/web/package.json ./apps/web/
+COPY apps/api/package.json ./apps/api/
 COPY apps/shared/package.json ./apps/shared/
 
-# Install all dependencies (including devDependencies for build)
 RUN pnpm install --frozen-lockfile
 
-# Copy source files
 COPY apps/shared ./apps/shared
-COPY apps/web ./apps/web
+COPY apps/api ./apps/api
 
-# Build packages
+RUN pnpm --filter @nats-console/api prisma generate
 RUN pnpm --filter @nats-console/shared build
-RUN pnpm --filter @nats-console/web build
+RUN pnpm --filter @nats-console/api build
 
 # =============================================================================
-# Stage 2: Runner - Final production image
+# Stage 2: Production dependencies
+# =============================================================================
+FROM node:20-alpine AS prod-deps
+
+WORKDIR /app
+
+RUN corepack enable && corepack prepare pnpm@latest --activate
+
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY apps/api/package.json ./apps/api/
+COPY apps/shared/package.json ./apps/shared/
+
+# Important: hoist dependencies for simpler runtime resolution
+RUN pnpm install --frozen-lockfile --prod --shamefully-hoist
+
+# =============================================================================
+# Stage 3: Runner
 # =============================================================================
 FROM node:20-alpine AS runner
 
 WORKDIR /app
 
-# Don't run as root
-RUN addgroup --system --gid 1001 nodejs
-RUN adduser --system --uid 1001 nextjs
+# Copy production node_modules
+COPY --from=prod-deps /app/node_modules ./node_modules
 
-# Copy Next.js standalone build
-COPY --from=builder /app/apps/web/.next/standalone ./
-COPY --from=builder /app/apps/web/.next/static ./apps/web/.next/static
-COPY --from=builder /app/apps/web/public ./apps/web/public
+# Copy built shared package
+COPY --from=builder /app/apps/shared/dist ./apps/shared/dist
+COPY --from=builder /app/apps/shared/package.json ./apps/shared/
 
-# Set correct ownership
-RUN chown -R nextjs:nodejs /app
+# Copy built API
+COPY --from=builder /app/apps/api/dist ./apps/api/dist
+COPY --from=builder /app/apps/api/package.json ./apps/api/
+COPY --from=builder /app/apps/api/prisma ./apps/api/prisma
 
-USER nextjs
+# Copy Prisma generated client
+COPY --from=builder /app/node_modules/.pnpm/@prisma+client*/node_modules/.prisma ./node_modules/.pnpm/@prisma+client*/node_modules/.prisma
+
+# Workspace files
+COPY package.json pnpm-workspace.yaml ./
+
+# Make sure app packages can resolve root node_modules
+RUN ln -s /app/node_modules /app/apps/api/node_modules && \
+    ln -s /app/node_modules /app/apps/shared/node_modules
+
+WORKDIR /app/apps/api
 
 ENV NODE_ENV=production
-ENV PORT=3000
-ENV HOSTNAME=0.0.0.0
+ENV PORT=3001
+ENV HOST=0.0.0.0
 
-EXPOSE 3000
+EXPOSE 3001
 
-CMD ["node", "apps/web/server.js"]
+CMD ["node", "dist/index.js"]

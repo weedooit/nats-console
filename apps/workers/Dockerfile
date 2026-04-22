@@ -29,4 +29,4 @@ ENV NODE_ENV=production
 
 WORKDIR /app/apps/workers
 
-CMD ["node", "dist/index.js"]
+CMD ["sh", "-lc", "/app/node_modules/.bin/prisma generate --schema=/app/apps/api/prisma/schema.prisma && node dist/index.js"]

@@ -17,7 +17,6 @@ RUN pnpm install --frozen-lockfile
 COPY apps/shared ./apps/shared
 COPY apps/api ./apps/api
 
-RUN pnpm --filter @nats-console/api prisma generate
 RUN pnpm --filter @nats-console/shared build
 RUN pnpm --filter @nats-console/api build
 
@@ -27,8 +26,11 @@ WORKDIR /app
 
 RUN apk add --no-cache libc6-compat
 
-# Copy the full built workspace to avoid pnpm workspace resolution issues
 COPY --from=builder /app /app
+
+# Important: regenerate Prisma client inside the FINAL runtime image
+RUN corepack enable && corepack prepare pnpm@9.14.2 --activate
+RUN pnpm --filter @nats-console/api prisma generate
 
 ENV NODE_ENV=production
 ENV PORT=3001

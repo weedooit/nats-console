@@ -48,25 +48,19 @@ FROM node:20-alpine AS runner
 
 WORKDIR /app
 
-# Copy production node_modules
 COPY --from=prod-deps /app/node_modules ./node_modules
 
-# Copy built shared package
 COPY --from=builder /app/apps/shared/dist ./apps/shared/dist
 COPY --from=builder /app/apps/shared/package.json ./apps/shared/
 
-# Copy built API
 COPY --from=builder /app/apps/api/dist ./apps/api/dist
 COPY --from=builder /app/apps/api/package.json ./apps/api/
 COPY --from=builder /app/apps/api/prisma ./apps/api/prisma
 
-# Copy Prisma generated client
 COPY --from=builder /app/node_modules/.pnpm/@prisma+client*/node_modules/.prisma ./node_modules/.pnpm/@prisma+client*/node_modules/.prisma
 
-# Workspace files
 COPY package.json pnpm-workspace.yaml ./
 
-# Make sure app packages can resolve root node_modules
 RUN ln -s /app/node_modules /app/apps/api/node_modules && \
     ln -s /app/node_modules /app/apps/shared/node_modules
 

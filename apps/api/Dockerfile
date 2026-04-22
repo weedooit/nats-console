@@ -1,11 +1,12 @@
 # =============================================================================
-# NATS Console API - Stable Dockerfile for Dokploy
+# NATS Console API - Simple and reliable Dockerfile for Dokploy
 # =============================================================================
 
-FROM node:20-alpine AS builder
+FROM node:20-alpine
 
 WORKDIR /app
 
+RUN apk add --no-cache libc6-compat
 RUN corepack enable && corepack prepare pnpm@9.14.2 --activate
 
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json ./
@@ -17,20 +18,9 @@ RUN pnpm install --frozen-lockfile
 COPY apps/shared ./apps/shared
 COPY apps/api ./apps/api
 
+RUN pnpm --filter @nats-console/api prisma generate
 RUN pnpm --filter @nats-console/shared build
 RUN pnpm --filter @nats-console/api build
-
-FROM node:20-alpine AS runner
-
-WORKDIR /app
-
-RUN apk add --no-cache libc6-compat
-
-COPY --from=builder /app /app
-
-# Important: regenerate Prisma client inside the FINAL runtime image
-RUN corepack enable && corepack prepare pnpm@9.14.2 --activate
-RUN pnpm --filter @nats-console/api prisma generate
 
 ENV NODE_ENV=production
 ENV PORT=3001

@@ -1,7 +1,3 @@
-# =============================================================================
-# NATS Console API - Simple and reliable Dockerfile for Dokploy
-# =============================================================================
-
 FROM node:20-alpine
 
 WORKDIR /app
@@ -18,7 +14,7 @@ RUN pnpm install --frozen-lockfile
 COPY apps/shared ./apps/shared
 COPY apps/api ./apps/api
 
-RUN pnpm --filter @nats-console/api prisma generate
+RUN cd apps/api && pnpm db:generate
 RUN pnpm --filter @nats-console/shared build
 RUN pnpm --filter @nats-console/api build
 

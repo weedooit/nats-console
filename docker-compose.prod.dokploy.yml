@@ -17,7 +17,7 @@ services:
 
       CLICKHOUSE_URL: ${CLICKHOUSE_URL}
       CLICKHOUSE_DATABASE: ${CLICKHOUSE_DATABASE:-nats_console}
-      CLICKHOUSE_USER: ${CLICKHOUSE_USER:-nats_console}
+      CLICKHOUSE_USER: ${CLICKHOUSE_USER:-default}
       CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:-}
 
       NATS_URL: ${NATS_URL}
@@ -40,7 +40,13 @@ services:
       nats:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3001/health"]
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://localhost:3001/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+        ]
       interval: 30s
       timeout: 10s
       retries: 5
@@ -64,7 +70,13 @@ services:
       api:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3000"]
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://localhost:3000').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+        ]
       interval: 30s
       timeout: 10s
       retries: 5
@@ -84,7 +96,7 @@ services:
 
       CLICKHOUSE_URL: ${CLICKHOUSE_URL}
       CLICKHOUSE_DATABASE: ${CLICKHOUSE_DATABASE:-nats_console}
-      CLICKHOUSE_USER: ${CLICKHOUSE_USER:-nats_console}
+      CLICKHOUSE_USER: ${CLICKHOUSE_USER:-default}
       CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:-}
 
       NATS_URL: ${NATS_URL}
@@ -111,7 +123,11 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-nats_console} -d ${POSTGRES_DB:-nats_console}"]
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${POSTGRES_USER:-nats_console} -d ${POSTGRES_DB:-nats_console}"
+        ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -133,7 +149,7 @@ services:
     restart: unless-stopped
     environment:
       CLICKHOUSE_DB: ${CLICKHOUSE_DATABASE:-nats_console}
-      CLICKHOUSE_USER: ${CLICKHOUSE_USER:-nats_console}
+      CLICKHOUSE_USER: ${CLICKHOUSE_USER:-default}
       CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:-}
       CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: 1
     volumes:

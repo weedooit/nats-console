@@ -1,5 +1,6 @@
 # =============================================================================
 # NATS Console Web - Multi-Stage Docker Build
+# Compatible with docker-compose.prod.dokploy.yml
 # =============================================================================
 
 # =============================================================================
@@ -12,6 +13,7 @@ WORKDIR /app
 # Install pnpm
 RUN corepack enable && corepack prepare pnpm@latest --activate
 
+# Public variables used by Next.js at BUILD time
 ARG NEXT_PUBLIC_API_URL=/api/v1
 ARG NEXT_PUBLIC_WS_URL=/ws
 
@@ -37,7 +39,6 @@ RUN pnpm --filter @nats-console/web build
 # =============================================================================
 # Stage 2: Runner - Final production image
 # =============================================================================
-# Next.js standalone output includes all dependencies, no need for prod-deps stage
 FROM node:20-alpine AS runner
 
 WORKDIR /app
@@ -46,7 +47,7 @@ WORKDIR /app
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
 
-# Copy Next.js standalone build (includes node_modules)
+# Copy Next.js standalone build
 COPY --from=builder /app/apps/web/.next/standalone ./
 COPY --from=builder /app/apps/web/.next/static ./apps/web/.next/static
 COPY --from=builder /app/apps/web/public ./apps/web/public

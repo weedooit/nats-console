@@ -20,8 +20,7 @@ COPY apps/shared ./apps/shared
 COPY apps/workers ./apps/workers
 COPY apps/api/prisma ./apps/api/prisma
 
-# Generate Prisma client using the API schema
-RUN pnpm exec prisma generate --schema=apps/api/prisma/schema.prisma
+RUN ./node_modules/.bin/prisma generate --schema=apps/api/prisma/schema.prisma
 
 RUN pnpm --filter @nats-console/shared build
 RUN pnpm --filter @nats-console/workers build

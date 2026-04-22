@@ -20,7 +20,7 @@ COPY apps/shared ./apps/shared
 COPY apps/workers ./apps/workers
 COPY apps/api/prisma ./apps/api/prisma
 
-RUN ./node_modules/.bin/prisma generate --schema=apps/api/prisma/schema.prisma
+RUN cd apps/workers && pnpm exec prisma generate --schema=../api/prisma/schema.prisma
 
 RUN pnpm --filter @nats-console/shared build
 RUN pnpm --filter @nats-console/workers build
@@ -29,4 +29,4 @@ ENV NODE_ENV=production
 
 WORKDIR /app/apps/workers
 
-CMD ["sh", "-lc", "/app/node_modules/.bin/prisma generate --schema=/app/apps/api/prisma/schema.prisma && node dist/index.js"]
+CMD ["sh", "-lc", "pnpm exec prisma generate --schema=../api/prisma/schema.prisma && node dist/index.js"]
